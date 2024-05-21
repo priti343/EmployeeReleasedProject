@@ -13,50 +13,27 @@ from django.conf import settings
 
 
 
+
+# Calculate remaining days function
 def calculate_remaining_days(last_working_date):
     current_date = datetime.now().date()
     difference = last_working_date - current_date
     remaining_days = abs(difference.days)
     is_45_days_remaining = remaining_days == 45
     return remaining_days, is_45_days_remaining
-#check if the difference is exactly 45 is_45_days_remaining
-    if is_45_days_remaining:
-        return remaining_days, True
-    return remaining_days, False
-def logEmail(sender_email, recipients, subject, message):
+
+
+def log_email(sender_email, recipients, subject, message):
     try:
-        print("Inside the LogEmail Method.")
         with open("email.log", "a") as f:
-            _str = f'Sender : {sender_email}, recipients : {recipients} , Subject : {subject}, Message : {message}\n'
-            f.write(_str)
+            log_entry = f'Sender: {sender_email}, Recipients: {recipients}, Subject: {subject}, Message: {message}\n'
+            f.write(log_entry)
             f.write("-----------------------------------------------\n")
-    except ex:
+    except Exception as ex:
         print(ex)
 
-def send_email_notification(employee):
-    sender_email = settings.EMAIL_HOST_USER
-    recipients = [employee.PMO_email, employee.Talent_central_contact_email]
-    subject = f'{employee.Emp_id} - {employee.Emp_name}'
-    message = f'Hello,<br>\n\n'
-    message += f'Hello,<br>\n\nI hope this email finds you well.<br>\n\nThe following members have been released from the project since 45 days, I request you to please take some actions.\n\n<br><br>'
 
-    message += f'<table border="1"><tr><th>Employee ID</th><th>Name</th><th>Project Name</th><th>Last Working Date</th><th>Reporting Manager ID</th><th>Reporting Manage Name</th><th>Project Released Feedback</th></tr>'
-    message += f'<tr><td>{employee.Emp_id}</td><td>{employee.Emp_name}</td><td>{employee.Project_name}</td><td>{employee.Last_working_date}</td><td>{employee.Reporting_manager_id}</td><td>{employee.Reporting_manager_name}</td><td>{employee.Project_released_feedback}</td></tr></table>'
-    message += '\n\nRegards,\nYour Company'
-
-
-    email = MIMEMultipart()
-    email['From'] = sender_email
-    email['To'] = ', '.join(recipients)
-    email['Subject'] = subject
-    email['Date'] = datetime.now().strftime('%a, %d %b %Y %H:%M:%S %z')
-    email.attach(MIMEText(message, 'html'))
-    with smtplib.SMTP(settings.EMAIL_HOST, settings.EMAIL_PORT) as smtp_server:
-            smtp_server.starttls()
-            smtp_server.login(sender_email, settings.EMAIL_HOST_PASSWORD)
-            smtp_server.send_message(email)
-
-
+# View to display employee details and check if an email notification needs to be sent
 def employee_details(request, emp_id):
     try:
         employee = EmployeeDetails.objects.get(Emp_id=emp_id)
@@ -69,19 +46,22 @@ def employee_details(request, emp_id):
         return HttpResponse("Employee not found!")
 
 
+# Simple employee details view
 def emp_details(request):
     return render(request, 'employee_details.html')
 
 
+# View to calculate remaining days for a specific employee
 def calculate_remaining_days_view(request, emp_id):
     try:
         employee = EmployeeDetails.objects.get(Emp_id=emp_id)
-        remaining_days = calculate_remaining_days(employee.Last_working_date)
+        remaining_days, _ = calculate_remaining_days(employee.Last_working_date)
         return HttpResponse(f"Remaining days for employee {emp_id}: {remaining_days}")
     except EmployeeDetails.DoesNotExist:
         return HttpResponse("Employee not found!")
 
 
+# Decorator for validating Excel file uploads
 def validate_excel(view_func):
     def wrapper(request, *args, **kwargs):
         if request.method == 'POST':
@@ -102,56 +82,90 @@ def upload_excel(request):
             excel_file = request.FILES['excel_file']
             df = pd.read_excel(excel_file)
 
-            for index, column in df.iterrows():
-                # Check if EmployeeDetails with same Emp_id exists
+            for index, row in df.iterrows():
                 try:
-                    employee = EmployeeDetails.objects.get(Emp_id=column['Emp_id'])
-
-                    # If EmployeeDetails with same Emp_id exists, update its details
-                    employee.Emp_name = column['Emp_name']
-                    employee.Project_name = column['Project_name']
-                    employee.Last_working_date = column['Last_working_date']
-                    employee.Reporting_manager_id = column['Reporting_manager_id']
-                    employee.Reporting_manager_name = column['Reporting_manager_name']
-                    employee.Project_released_feedback = column['Project_released_feedback']
-                    employee.PMO = column['PMO']
-                    employee.PMO_name = column['PMO_name']
-                    employee.PMO_email = column['PMO_email']
-                    employee.Talent_central_contact_name = column['Talent_central_contact_name']
-                    employee.Talent_central_contact_email = column['Talent_central_contact_email']
+                    employee = EmployeeDetails.objects.get(Emp_id=row['Emp_id'])
+                    employee.Emp_name = row['Emp_name']
+                    employee.Project_name = row['Project_name']
+                    employee.Last_working_date = row['Last_working_date']
+                    employee.Reporting_manager_id = row['Reporting_manager_id']
+                    employee.Reporting_manager_name = row['Reporting_manager_name']
+                    employee.Project_released_feedback = row['Project_released_feedback']
+                    employee.PMO = row['PMO']
+                    employee.PMO_name = row['PMO_name']
+                    employee.PMO_email = row['PMO_email']
+                    employee.Talent_central_contact_name = row['Talent_central_contact_name']
+                    employee.Talent_central_contact_email = row['Talent_central_contact_email']
                     employee.save()
-
-                # If EmployeeDetails with same Emp_id doesn't exist, create a new one
                 except EmployeeDetails.DoesNotExist:
                     EmployeeDetails.objects.create(
-                        Emp_id=column['Emp_id'],
-                        Emp_name=column['Emp_name'],
-                        Project_name=column['Project_name'],
-                        Last_working_date=column['Last_working_date'],
-                        Reporting_manager_id=column['Reporting_manager_id'],
-                        Reporting_manager_name=column['Reporting_manager_name'],
-                        Project_released_feedback=column['Project_released_feedback'],
-                        PMO=column['PMO'],
-                        PMO_name=column['PMO_name'],
-                        PMO_email=column['PMO_email'],
-                        Talent_central_contact_name=column['Talent_central_contact_name'],
-                        Talent_central_contact_email=column['Talent_central_contact_email']
+                        Emp_id=row['Emp_id'],
+                        Emp_name=row['Emp_name'],
+                        Project_name=row['Project_name'],
+                        Last_working_date=row['Last_working_date'],
+                        Reporting_manager_id=row['Reporting_manager_id'],
+                        Reporting_manager_name=row['Reporting_manager_name'],
+                        Project_released_feedback=row['Project_released_feedback'],
+                        PMO=row['PMO'],
+                        PMO_name=row['PMO_name'],
+                        PMO_email=row['PMO_email'],
+                        Talent_central_contact_name=row['Talent_central_contact_name'],
+                        Talent_central_contact_email=row['Talent_central_contact_email']
                     )
 
             return render(request, 'success.html')
-
     else:
         form = ExcelUploadForm()
-
     return render(request, 'upload_excel.html', {'form': form})
 
 
+def send_email_notification(employee):
+    sender_email = settings.EMAIL_HOST_USER
+    recipients = [employee.PMO_email, employee.Talent_central_contact_email]
+    subject = f'{employee.Emp_id} - {employee.Emp_name}'
+    message = f"""
+    Hello,<br><br>
+    I hope this email finds you well.<br><br>
+    The following member has been released from the project since 45 days, I request you to please take some actions.<br><br>
+    <table border="1">
+        <tr>
+            <th>Employee ID</th>
+            <th>Name</th>
+            <th>Project Name</th>
+            <th>Last Working Date</th>
+            <th>Reporting Manager ID</th>
+            <th>Reporting Manager Name</th>
+            <th>Project Released Feedback</th>
+        </tr>
+        <tr>
+            <td>{employee.Emp_id}</td>
+            <td>{employee.Emp_name}</td>
+            <td>{employee.Project_name}</td>
+            <td>{employee.Last_working_date}</td>
+            <td>{employee.Reporting_manager_id}</td>
+            <td>{employee.Reporting_manager_name}</td>
+            <td>{employee.Project_released_feedback}</td>
+        </tr>
+    </table>
+    <br>Regards,<br>Your Company
+    """
+
+    email = MIMEMultipart()
+    email['From'] = sender_email
+    email['To'] = ', '.join(recipients)
+    email['Subject'] = subject
+    email.attach(MIMEText(message, 'html'))
+
+    with smtplib.SMTP(settings.EMAIL_HOST, settings.EMAIL_PORT) as smtp_server:
+        smtp_server.starttls()
+        smtp_server.login(sender_email, settings.EMAIL_HOST_PASSWORD)
+        smtp_server.send_message(email)
+    log_email(sender_email, recipients, subject, message)
+
+
 def trigger_email_notifications(request):
-
-    forty_five_days_ago = timezone.now() - timedelta(days=45) # Calculate the date which is 45 days before the current date
-    employees = EmployeeDetails.objects.filter(Last_working_date=forty_five_days_ago)
-     #Fetch employees whose last working date is 45 days
-    for employee in employees: #Iterate only the filtered employees and send email notifications
+    forty_five_days_ago = timezone.now() - timedelta(days=45)
+    employees = EmployeeDetails.objects.filter(Last_working_date=forty_five_days_ago.date())
+    for employee in employees:
         send_email_notification(employee)
-
     return HttpResponse("Email notifications triggered successfully.")

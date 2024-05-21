@@ -14,3 +14,30 @@ This is to notify you that the last working date for Employee 21 (Priti) is appr
 Regards,
 Your Company
 -----------------------------------------------
+Sender: manna9999@outlook.com, Recipients: ['ranjekumar@altimetrik.com', 'pritiy@altimetrik.com'], Subject: 21 - Priti, Message: 
+    Hello,<br><br>
+    I hope this email finds you well.<br><br>
+    The following member has been released from the project since 45 days, I request you to please take some actions.<br><br>
+    <table border="1">
+        <tr>
+            <th>Employee ID</th>
+            <th>Name</th>
+            <th>Project Name</th>
+            <th>Last Working Date</th>
+            <th>Reporting Manager ID</th>
+            <th>Reporting Manager Name</th>
+            <th>Project Released Feedback</th>
+        </tr>
+        <tr>
+            <td>21</td>
+            <td>Priti</td>
+            <td>Stdproject</td>
+            <td>2024-04-06</td>
+            <td>34</td>
+            <td>Partul</td>
+            <td>Good</td>
+        </tr>
+    </table>
+    <br>Regards,<br>Your Company
+    
+-----------------------------------------------
